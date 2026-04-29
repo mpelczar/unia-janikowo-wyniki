@@ -16,29 +16,54 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ],
   });
 
   const page = await browser.newPage();
+
+  await page.setUserAgent(
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+  );
 
   let playedMatches   = null;
   let upcomingMatches = null;
 
   page.on('response', async (response) => {
     const url = response.url();
-    if (url.includes('played-matches')) {
-      try { playedMatches = await response.json(); console.log('✓ played-matches'); }
-      catch (e) { console.warn('Błąd:', e.message); }
-    }
-    if (url.includes('not-played-matches')) {
-      try { upcomingMatches = await response.json(); console.log('✓ not-played-matches'); }
-      catch (e) { console.warn('Błąd:', e.message); }
-    }
+    try {
+      if (url.includes('played-matches') && !url.includes('not-played')) {
+        const json = await response.json();
+        playedMatches = json;
+        console.log('✓ played-matches, rozmiar:', JSON.stringify(json).length);
+      }
+      if (url.includes('not-played-matches')) {
+        const json = await response.json();
+        upcomingMatches = json;
+        console.log('✓ not-played-matches, rozmiar:', JSON.stringify(json).length);
+      }
+    } catch (e) {}
   });
 
   console.log('Ładowanie strony PZPN...');
-  await page.goto(URL, { waitUntil: 'networkidle2', timeout: 60000 });
-  await new Promise(r => setTimeout(r, 3000));
+  try {
+    await page.goto(URL, { waitUntil: 'load', timeout: 90000 });
+  } catch (e) {
+    console.log('Timeout goto:', e.message);
+  }
+
+  console.log('Czekam na dane API...');
+  const start = Date.now();
+  while ((!playedMatches || !upcomingMatches) && Date.now() - start < 30000) {
+    await new Promise(r => setTimeout(r, 1000));
+    process.stdout.write('.');
+  }
+  console.log('');
+
   await browser.close();
 
   if (!playedMatches && !upcomingMatches) {
@@ -64,5 +89,5 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   const output = { updatedAt: new Date().toISOString(), played, upcoming };
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2), 'utf8');
-  console.log(`✅ ${played.length} rozegranych, ${upcoming.length} planowanych`);
+  console.log(`✅ Zapisano: ${played.length} rozegranych, ${upcoming.length} planowanych`);
 })();
