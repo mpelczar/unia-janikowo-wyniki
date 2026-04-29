@@ -19,7 +19,6 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   });
 
   const page = await browser.newPage();
-  // Wysoki viewport żeby zmieścić obie sekcje
   await page.setViewport({ width: 1200, height: 2200, deviceScaleFactor: 2 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
@@ -31,22 +30,38 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   await new Promise(r => setTimeout(r, 5000));
 
-  // Ukryj WSZYSTKIE fixed/sticky elementy (banner, header itp.)
+  // Ukryj banner i wszystkie fixed/sticky elementy
   await page.evaluate(() => {
+    // Celuj bezpośrednio w klasy PZPN
+    ['.loader', '.pzpn-top-bar', '.l-cd'].forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        el.style.setProperty('display', 'none', 'important');
+      });
+    });
+
+    // Ukryj wszystkie fixed/sticky
     document.querySelectorAll('*').forEach(el => {
       const s = getComputedStyle(el);
       if (s.position === 'fixed' || s.position === 'sticky') {
         el.style.setProperty('display', 'none', 'important');
       }
     });
+
+    // Ukryj header/footer
+    ['header', 'nav', 'footer', '[class*="navbar"]', '[class*="footer"]',
+     '[class*="breadcrumb"]'].forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        el.style.setProperty('display', 'none', 'important');
+      });
+    });
+
     document.body.style.background = '#fff';
     document.body.style.setProperty('overflow', 'auto', 'important');
     document.documentElement.style.setProperty('overflow', 'auto', 'important');
   });
 
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise(r => setTimeout(r, 1000));
 
-  // Znajdź pozycję sekcji
   const topY = await page.evaluate(() => {
     const headers = Array.from(document.querySelectorAll('h2, h3'))
       .filter(el => el.textContent.includes('mecze') || el.textContent.includes('Mecze'));
