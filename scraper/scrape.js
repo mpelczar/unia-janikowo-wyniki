@@ -34,17 +34,31 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   console.log('Czekam na wyrenderowanie...');
   await new Promise(r => setTimeout(r, 5000));
 
+  // Kliknij "Zaakceptuj wszystkie" jeśli banner istnieje
+  console.log('Szukam cookie bannera...');
+  try {
+    const acceptBtn = await page.$('[data-testid="uc-accept-all-button"]');
+    if (acceptBtn) {
+      console.log('Klikam Zaakceptuj wszystkie...');
+      await acceptBtn.click();
+      await new Promise(r => setTimeout(r, 2000));
+      console.log('Banner zamknięty');
+    } else {
+      console.log('Brak bannera');
+    }
+  } catch (e) {
+    console.log('Błąd klikania bannera:', e.message);
+  }
+
+  // Dodatkowe ukrycie na wszelki wypadek
   await page.evaluate(() => {
     [
-      // Usercentrics cookie banner
       '#uc-center-container',
       '[data-testid="uc-default-wall"]',
       '[data-testid="uc-overlay"]',
-      '.sc-cwHptR',
       '#app-focus-lock',
       '[data-testid="uc-privacy-button"]',
       '.sc-aXZVg',
-      // header, nav, footer
       'header', 'nav', 'footer',
       '[class*="header"]',
       '[class*="navbar"]',
