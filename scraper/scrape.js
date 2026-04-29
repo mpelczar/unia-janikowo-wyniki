@@ -24,37 +24,23 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 2 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
-  // Ustaw cookies zgody PRZED załadowaniem strony
-  // Usercentrics przechowuje zgodę w localStorage i cookies
-  await page.evaluateOnNewDocument(() => {
-    // Symuluj zgodę Usercentrics
-    const consent = {
-      controllerId: 'laczynaspilka',
-      language: 'pl',
-      version: { explicit: 1 },
-      tcfTCString: '',
-      consentedAll: true,
-    };
-
-    // localStorage
-    try {
-      localStorage.setItem('uc_user_interaction', '1');
-      localStorage.setItem('uc_ui_mode', 'wall');
-      localStorage.setItem('usercentrics-consent', JSON.stringify(consent));
-    } catch(e) {}
-
-    // Ukryj banner przez CSS zanim się załaduje
-    const style = document.createElement('style');
-    style.textContent = `
-      #uc-center-container,
-      [data-testid="uc-default-wall"],
-      [data-testid="uc-overlay"],
-      #app-focus-lock,
-      .sc-cwHptR,
-      [id^="usercentrics"],
-      [class*="usercentrics"] { display: none !important; }
-    `;
-    document.head.appendChild(style);
+  // Zablokuj skrypty Usercentrics i cookie bannerów
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const url = req.url();
+    if (
+      url.includes('usercentrics') ||
+      url.includes('consent') ||
+      url.includes('cookiebot') ||
+      url.includes('cookieconsent') ||
+      url.includes('app.usercentrics.eu') ||
+      url.includes('gdpr-applier')
+    ) {
+      console.log('Blokuję:', url);
+      req.abort();
+    } else {
+      req.continue();
+    }
   });
 
   console.log('Ładowanie strony PZPN...');
@@ -66,52 +52,17 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   await new Promise(r => setTimeout(r, 5000));
 
-  // Agresywne ukrycie wszystkiego co może być bannerem
+  // Ukryj header/footer
   await page.evaluate(() => {
-    // Ukryj przez data-testid
-    document.querySelectorAll('[data-testid^="uc-"]').forEach(el => {
-      el.style.setProperty('display', 'none', 'important');
-    });
-
-    // Ukryj przez treść
-    document.querySelectorAll('button').forEach(btn => {
-      if (btn.textContent.includes('Zaakceptuj') || btn.textContent.includes('Odrzuć')) {
-        let el = btn;
-        // Idź w górę drzewa DOM żeby znaleźć kontener bannera
-        for (let i = 0; i < 10; i++) {
-          if (!el.parentElement) break;
-          el = el.parentElement;
-          const s = getComputedStyle(el);
-          if (s.position === 'fixed' || s.zIndex > 100) {
-            el.style.setProperty('display', 'none', 'important');
-            break;
-          }
-        }
-      }
-    });
-
-    // Ukryj overlay
-    document.querySelectorAll('*').forEach(el => {
-      const s = getComputedStyle(el);
-      if ((s.position === 'fixed' || s.position === 'absolute') &&
-           parseInt(s.zIndex) > 100 &&
-           el.offsetWidth > 500) {
-        el.style.setProperty('display', 'none', 'important');
-      }
-    });
-
-    // Reset body
-    document.body.style.setProperty('overflow', 'auto', 'important');
-    document.documentElement.style.setProperty('overflow', 'auto', 'important');
-    document.body.style.background = '#fff';
-
-    // Ukryj header/footer
     ['header', 'nav', 'footer', '[class*="navbar"]', '[class*="footer"]',
      '[class*="breadcrumb"]', '[class*="banner"]'].forEach(sel => {
       document.querySelectorAll(sel).forEach(el => {
         el.style.setProperty('display', 'none', 'important');
       });
     });
+    document.body.style.background = '#fff';
+    document.body.style.setProperty('overflow', 'auto', 'important');
+    document.documentElement.style.setProperty('overflow', 'auto', 'important');
   });
 
   await new Promise(r => setTimeout(r, 1000));
