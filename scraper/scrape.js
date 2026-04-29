@@ -30,7 +30,6 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   await new Promise(r => setTimeout(r, 5000));
 
-  // Znajdź pozycję sekcji z meczami
   const topY = await page.evaluate(() => {
     const headers = Array.from(document.querySelectorAll('h2, h3'))
       .filter(el => el.textContent.includes('mecze') || el.textContent.includes('Mecze'));
@@ -41,7 +40,6 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   console.log('Pozycja sekcji Y:', topY);
 
-  // Ukryj header/footer (nie ruszamy bannera)
   await page.evaluate(() => {
     ['header', 'nav', '[class*="navbar"]', '[class*="breadcrumb"]',
      'footer', '[class*="footer"]'].forEach(sel => {
@@ -52,12 +50,11 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     document.body.style.background = '#fff';
   });
 
-  // Screenshot przez clip — bierzemy obszar strony OD pozycji meczów
-  // Banner jest fixed więc NIE jest w scroll position, jest zawsze na viewport
-  // Używamy fullPage:true i clip żeby wziąć konkretny fragment dokumentu
+  await page.evaluate((y) => window.scrollTo(0, y), topY);
+  await new Promise(r => setTimeout(r, 500));
+
   await page.screenshot({
     path: IMG_FILE,
-    fullPage: true,
     clip: { x: 0, y: topY, width: 1200, height: 1050 },
   });
 
