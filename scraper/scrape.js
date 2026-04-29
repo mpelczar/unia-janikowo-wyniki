@@ -19,7 +19,8 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   });
 
   const page = await browser.newPage();
-  await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 2 });
+  // Wysoki viewport żeby zmieścić obie sekcje
+  await page.setViewport({ width: 1200, height: 2200, deviceScaleFactor: 2 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
   try {
@@ -30,6 +31,22 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   await new Promise(r => setTimeout(r, 5000));
 
+  // Ukryj WSZYSTKIE fixed/sticky elementy (banner, header itp.)
+  await page.evaluate(() => {
+    document.querySelectorAll('*').forEach(el => {
+      const s = getComputedStyle(el);
+      if (s.position === 'fixed' || s.position === 'sticky') {
+        el.style.setProperty('display', 'none', 'important');
+      }
+    });
+    document.body.style.background = '#fff';
+    document.body.style.setProperty('overflow', 'auto', 'important');
+    document.documentElement.style.setProperty('overflow', 'auto', 'important');
+  });
+
+  await new Promise(r => setTimeout(r, 500));
+
+  // Znajdź pozycję sekcji
   const topY = await page.evaluate(() => {
     const headers = Array.from(document.querySelectorAll('h2, h3'))
       .filter(el => el.textContent.includes('mecze') || el.textContent.includes('Mecze'));
@@ -40,22 +57,9 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   console.log('Pozycja sekcji Y:', topY);
 
-  await page.evaluate(() => {
-    ['header', 'nav', '[class*="navbar"]', '[class*="breadcrumb"]',
-     'footer', '[class*="footer"]'].forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
-        el.style.setProperty('display', 'none', 'important');
-      });
-    });
-    document.body.style.background = '#fff';
-  });
-
-  await page.evaluate((y) => window.scrollTo(0, y), topY);
-  await new Promise(r => setTimeout(r, 500));
-
   await page.screenshot({
     path: IMG_FILE,
-    clip: { x: 0, y: topY, width: 1200, height: 1050 },
+    clip: { x: 0, y: topY, width: 1200, height: 1800 },
   });
 
   await browser.close();
