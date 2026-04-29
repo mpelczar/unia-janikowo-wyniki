@@ -57,12 +57,28 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   await new Promise(r => setTimeout(r, 500));
 
-  const topY = await page.evaluate(() => {
+   const topY = await page.evaluate(() => {
     const headers = Array.from(document.querySelectorAll('h2, h3'))
       .filter(el => el.textContent.includes('mecze') || el.textContent.includes('Mecze'));
-    if (!headers.length) return 600;
-    const rect = headers[0].getBoundingClientRect();
-    return Math.max(0, rect.top + window.scrollY - 24);
+    if (!headers.length) return 1200;
+    // Szukamy nagłówka który NIE jest wewnątrz elementu fixed/overlay
+    for (const h of headers) {
+      let el = h;
+      let insideFixed = false;
+      while (el.parentElement) {
+        el = el.parentElement;
+        const s = getComputedStyle(el);
+        if (s.position === 'fixed' || parseInt(s.zIndex) > 100) {
+          insideFixed = true;
+          break;
+        }
+      }
+      if (!insideFixed) {
+        const rect = h.getBoundingClientRect();
+        return Math.max(0, rect.top + window.scrollY - 24);
+      }
+    }
+    return 1200;
   });
 
   console.log('Pozycja sekcji Y:', topY);
