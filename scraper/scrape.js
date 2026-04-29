@@ -36,17 +36,31 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   await page.evaluate(() => {
     [
-      '[class*="cookie"]', '[class*="consent"]', '[class*="gdpr"]',
-      '[id*="cookie"]', '[id*="consent"]',
-      'header', 'nav', '[class*="header"]', '[class*="navbar"]',
-      'footer', '[class*="footer"]',
-      '[class*="banner"]', '[class*="ads"]',
-      '[class*="breadcrumb"]', '[class*="tabs"]',
-      '[class*="filter"]', '[class*="select"]',
+      // Usercentrics cookie banner
+      '#uc-center-container',
+      '[data-testid="uc-default-wall"]',
+      '[data-testid="uc-overlay"]',
+      '.sc-cwHptR',
+      '#app-focus-lock',
+      '[data-testid="uc-privacy-button"]',
+      '.sc-aXZVg',
+      // header, nav, footer
+      'header', 'nav', 'footer',
+      '[class*="header"]',
+      '[class*="navbar"]',
+      '[class*="footer"]',
+      '[class*="breadcrumb"]',
+      '[class*="tabs"]',
+      '[class*="filter"]',
+      '[class*="select"]',
+      '[class*="banner"]',
+      '[class*="ads"]',
     ].forEach(sel => {
       document.querySelectorAll(sel).forEach(el => el.style.display = 'none');
     });
     document.body.style.background = '#fff';
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
   });
 
   const topY = await page.evaluate(() => {
